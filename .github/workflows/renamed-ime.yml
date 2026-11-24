@@ -1,0 +1,31 @@
+name: Rebuild renamed reference IME
+on:
+  workflow_dispatch:
+  push:
+    branches: [chatmirror-cloud-build]
+    paths: ['warmime-rebuild/**', '.github/workflows/renamed-ime.yml']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download apktool
+        run: curl -fL --retry 3 -o apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar
+      - name: Rebuild package and label
+        working-directory: warmime-rebuild
+        run: |
+          java -jar ../apktool.jar d original.apk -o decoded
+          python rename.py
+          java -jar ../apktool.jar b decoded -o unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f 4 unsigned.apk aligned.apk
+          keytool -genkeypair -keystore debug.keystore -storepass android -keypass android -alias debug -dname 'CN=ChatMirror Debug' -keyalg RSA -keysize 2048 -validity 3650
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out chatmirror-renamed-debug.apk aligned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify chatmirror-renamed-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chatmirror-renamed-ime-debug
+          path: warmime-rebuild/chatmirror-renamed-debug.apk
