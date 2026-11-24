@@ -8,7 +8,7 @@ s = s.replace('com.cyxfssx.warmime.picker', 'com.chatmirror.warmclone.picker')
 manifest.write_text(s, encoding='utf-8')
 strings = root / 'res/values/strings.xml'
 s = strings.read_text(encoding='utf-8')
-s, count = re.subn(r'(<string name="app_name">).*?(</string>)', r'\1ChatMirror 输入法\2', s)
+s, count = re.subn(r'(<string name="app_name">).*?(</string>)', r'\1推推2\2', s)
 if count != 1: raise RuntimeError('Could not identify app label')
 strings.write_text(s, encoding='utf-8')
 count = 0
@@ -20,3 +20,4 @@ for path in root.glob('smali*/**/*.smali'):
         count += 1
 if not count: raise RuntimeError('Image provider authority not found in code')
 print('Updated image authority in', count, 'files')
+
