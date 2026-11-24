@@ -92,7 +92,7 @@ class App:
         if not name:messagebox.showwarning('名称为空','请输入设备名称。',parent=self.root);return
         self.cfg.value.setdefault('notes',{})[self.serial]=name;self.cfg.save();self.populate_devices()
         p=self.backend.processes.get(self.serial)
-        if p and p.poll() is None and not set_title(p.pid,'推推投屏 · '+name):self.set_status('设备名称已保存；投屏窗口启动后会使用新名称。')
+        if p and p.poll() is None and not set_title(p.pid,name):self.set_status('设备名称已保存；投屏窗口启动后会使用新名称。')
         else:self.set_status('设备名称已更新，投屏窗口标题已同步。' if p and p.poll() is None else '设备名称已更新。')
     def populate_devices(self):
         self.list.delete(0,'end');notes=self.cfg.value.get('notes',{})

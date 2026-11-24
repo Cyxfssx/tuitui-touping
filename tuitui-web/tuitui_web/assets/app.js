@@ -8,21 +8,22 @@ async function call(name,...args){
 }
 function button(text,action,disabled=false){const b=document.createElement('button');b.textContent=text;b.disabled=disabled;b.addEventListener('click',action);return b}
 function renderDevices(state){
-  const box=$('devices');box.replaceChildren();$('count').textContent=state.devices.length ? `${state.devices.length} 台设备` : '未发现设备';
-  if(!state.devices.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='连接手机并允许 USB 调试后，设备会自动出现。';box.append(empty)}
-  for(const d of state.devices){
-    const item=document.createElement('button');item.className='device-item'+(d.id===state.selected?' selected':'');
-    const icon=document.createElement('span');icon.className='device-icon';icon.textContent='▯';
-    const info=document.createElement('span');info.className='device-info';const name=document.createElement('strong');name.textContent=d.name;const model=document.createElement('small');model.textContent=d.model;info.append(name,model);
-    const status=document.createElement('span');status.className='device-state'+(d.state==='device'?'':' offline');status.textContent=d.state==='device'?'已连接':'未授权';
-    item.append(icon,info,status);item.addEventListener('click',()=>call('select_device',d.id).then(poll).catch(()=>{}));item.addEventListener('dblclick',()=>{if(d.state!=='device')return;call(d.running?'show_mirror':'toggle_mirror').then(poll).catch(()=>{})});box.append(item);
+  const box=$('devices');const sig=JSON.stringify([state.devices,state.selected]);$('count').textContent=state.devices.length ? `${state.devices.length} 台设备` : '未发现设备';
+  if(box.dataset.signature!==sig){
+    box.dataset.signature=sig;box.replaceChildren();
+    if(!state.devices.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='连接手机并允许 USB 调试后，设备会自动出现。';box.append(empty)}
+    for(const d of state.devices){
+      const item=document.createElement('div');item.className='device-item'+(d.id===state.selected?' selected':'');item.tabIndex=0;
+      const icon=document.createElement('span');icon.className='device-icon';icon.textContent='▯';
+      const info=document.createElement('span');info.className='device-info';const name=document.createElement('strong');name.textContent=d.name;const model=document.createElement('small');model.textContent=d.model+(d.state==='device'?' · USB 已连接':' · 未授权或离线');info.append(name,model);
+      const deviceAction=document.createElement('button');deviceAction.className='device-action'+(d.running?' running':'');deviceAction.textContent=d.running?'停止':'投屏';deviceAction.disabled=d.state!=='device'&&!d.running;
+      deviceAction.addEventListener('click',e=>{e.stopPropagation();call('toggle_device',d.id).then(poll).catch(()=>{})});
+      item.append(icon,info,deviceAction);item.addEventListener('click',()=>call('select_device',d.id).then(poll).catch(()=>{}));item.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();call('select_device',d.id).then(poll).catch(()=>{})}});item.addEventListener('dblclick',()=>{if(d.state!=='device')return;call('select_device',d.id).then(()=>call(d.running?'show_mirror':'toggle_mirror')).then(poll).catch(()=>{})});box.append(item);
+    }
   }
-  const selected=state.devices.find(d=>d.id===state.selected), online=selected?.state==='device';
-  $('selectedName').textContent=selected?selected.name:'尚未选择设备';$('selectedModel').textContent=selected?selected.model+' · USB':'连接手机并允许 USB 调试';
-  $('connectionText').textContent=selected?(online?'USB 已连接':'未授权或离线'):'未连接';$('connection').classList.toggle('online',!!online);
-  $('connectBtn').disabled=!online;$('renameBtn').disabled=!online;$('connectBtn').classList.toggle('running',!!selected?.running);$('connectIcon').textContent=selected?.running?'■':'▶';$('connectText').textContent=selected?.running?'停止投屏':'一键 USB 连接';
+  const selected=state.devices.find(d=>d.id===state.selected),online=selected?.state==='device';$('renameBtn').disabled=!online;
   if(lastSelected!==state.selected){$('rename').value=selected?selected.name:'';lastSelected=state.selected}
-  if(document.activeElement!==$('rename') && selected && $('rename').value!==selected.name) $('rename').value=selected.name;
+  if(document.activeElement!==$('rename') && selected && $('rename').value!==selected.name)$('rename').value=selected.name;
 }
 function renderSettings(state){
   const s=state.settings, simple=s.simple_mode!==false;$('simpleMode').checked=simple;$('advancedPanel').hidden=simple;$('layout').classList.toggle('expanded',!simple);
@@ -51,7 +52,6 @@ async function setting(data){try{await call('settings',data);await poll()}catch(
 async function setMode(simple){try{await call('set_mode',simple);await poll()}catch(e){if(current)renderSettings(current)}}
 window.addEventListener('pywebviewready',()=>{
   $('refreshBtn').onclick=()=>call('refresh').then(()=>notice('正在刷新设备…')).catch(()=>{});
-  $('connectBtn').onclick=()=>call('toggle_mirror').then(poll).catch(()=>{});
   $('renameBtn').onclick=()=>call('rename',$('rename').value).then(poll).catch(()=>{});
   $('rename').onkeydown=e=>{if(e.key==='Enter')$('renameBtn').click()};
   $('simpleMode').onchange=e=>setMode(e.target.checked);$('advancedBtn').onclick=()=>setMode(false);$('backSimple').onclick=()=>setMode(true);
@@ -61,6 +61,7 @@ window.addEventListener('pywebviewready',()=>{
   const choose=async()=>{try{await call('settings',{directory:$('directory').value});await call('choose_files');await poll()}catch(e){}};
   $('chooseBtn').onclick=choose;$('dropzone').onclick=choose;$('dropzone').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose()}};
   $('dropzone').addEventListener('dragenter',e=>{e.preventDefault();$('dropzone').classList.add('drag')});$('dropzone').addEventListener('dragleave',()=>$('dropzone').classList.remove('drag'));$('dropzone').addEventListener('drop',()=>{ $('dropzone').classList.remove('drag');setTimeout(poll,500)});
+  $('installImeBtn').onclick=()=>call('install_ime').then(poll).catch(()=>{});$('imeSettingsBtn').onclick=()=>call('ime_settings').then(poll).catch(()=>{});
   $('showBtn').onclick=()=>call('show_mirror').catch(()=>{});$('reconnectBtn').onclick=()=>call('reconnect').then(poll).catch(()=>{});$('logsBtn').onclick=()=>call('open_logs').catch(()=>{});$('clearBtn').onclick=()=>call('clear_tasks').then(poll).catch(()=>{});
   poll();setInterval(poll,1000);
 });

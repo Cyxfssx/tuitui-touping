@@ -4,7 +4,7 @@ from ctypes import wintypes
 from pathlib import Path
 import webview
 from webview.dom import DOMEventHandler
-from tuitui_personal.backend import Backend,Config,DATA
+from tuitui_personal.backend import Backend,Config,DATA,ROOT,run
 from tuitui_personal.hotkeys import Hook,capture
 from tuitui_personal.windows import bounds,show,set_title
 
@@ -59,6 +59,7 @@ class Controller:
         with self._lock:
             if name=='devices':
                 self._polling=False;self._devices=args[0]
+                if self._devices and (self._status.startswith('正在检测') or self._status.startswith('未检测到')):self._status='USB 设备已连接。'
                 if not any(row[0]==self._selected for row in self._devices):self._selected=self._devices[0][0] if self._devices else ''
                 if not self._devices:self._status='未检测到 USB 设备，请连接并授权调试。'
             elif name=='device_error':self._polling=False;self._status='ADB 检测失败：'+args[0]
@@ -116,7 +117,14 @@ class Controller:
                     else:self._schedule(serial,0,False)
                 elif not connected:self._schedule(serial,4,mode=='manual')
                 elif mode=='manual' or self._config.value.get('auto_reconnect',True):
-                    self._count[serial]=self._count.get(serial,0)+1;self._status='正在重新连接…';self._backend.start(serial,self._config.value.copy())
+                    self._count[serial]=self._count.get(serial,0)+1;self._status='正在重新连接…';self._backend.start(serial,self._mirror_settings(serial))
+    def _mirror_settings(self,serial):
+        settings=self._config.value.copy();notes=dict(settings.get('notes',{}))
+        if not notes.get(serial):
+            row=next(((i,r) for i,r in enumerate(self._devices) if r[0]==serial),None)
+            notes[serial]=(f'手机 {row[0]+1:02d} · {row[1][2]}' if row else '手机')
+        settings['notes']=notes
+        return settings
     def _require(self):
         if not any(row[0]==self._selected and row[1]=='device' for row in self._devices):raise ValueError('请先选择已授权的 USB 设备。')
         return self._selected
@@ -141,16 +149,25 @@ class Controller:
         if not name or len(name)>64 or any(ord(c)<32 for c in name):raise ValueError('请输入 1 至 64 个字符的设备名称。')
         with self._lock:
             serial=self._require();self._config.value.setdefault('notes',{})[serial]=name;self._config.save();p=self._backend.processes.get(serial)
-            if p and p.poll() is None:set_title(p.pid,'推推投屏 · '+name)
-            self._status='设备名称已更新。'
+            if p and p.poll() is None and not set_title(p.pid,name):self._status='名称已保存，投屏窗口下次启动时生效。'
+            else:self._status='设备名称已更新。'
         return True
     def toggle_mirror(self):
         with self._lock:
-            serial=self._require();p=self._backend.processes.get(serial)
+            serial=self._selected
+            if not serial:raise ValueError('请先选择设备。')
+            p=self._backend.processes.get(serial)
             if p and p.poll() is None:
                 self._want.pop(serial,None);self._retry.pop(serial,None);self._stop_requested.add(serial);self._save_positions();self._backend.stop(serial)
-            else:self._want[serial]=True;self._count[serial]=0;self._stop_requested.discard(serial);self._backend.start(serial,self._config.value.copy())
+            else:
+                self._require();self._want[serial]=True;self._count[serial]=0;self._stop_requested.discard(serial);self._backend.start(serial,self._mirror_settings(serial))
         return True
+    def toggle_device(self,serial):
+        with self._lock:
+            p=self._backend.processes.get(serial);running=bool(p and p.poll() is None)
+            if not any(row[0]==serial and row[1]=='device' for row in self._devices) and not running:raise ValueError('设备已断开或未授权。')
+            self._selected=serial
+            return self.toggle_mirror()
     def reconnect(self):
         with self._lock:
             serial=self._require();self._want[serial]=True;self._count[serial]=0;p=self._backend.processes.get(serial)
@@ -204,6 +221,19 @@ class Controller:
         return True
     def clear_tasks(self):
         with self._lock:self._backend.transfers.clear_finished()
+        return True
+    def install_ime(self):
+        with self._lock:serial=self._require()
+        apk=ROOT/'assets'/'tuitui2.apk'
+        if not apk.is_file():raise ValueError('找不到推推2输入法安装包。')
+        self._status='正在安装推推2输入法…'
+        run('-s',serial,'install','-r',str(apk),timeout=120)
+        self._status='推推2已安装，请在手机输入法设置中启用并选择。'
+        return True
+    def ime_settings(self):
+        with self._lock:serial=self._require()
+        run('-s',serial,'shell','am','start','-a','android.settings.INPUT_METHOD_SETTINGS')
+        self._status='已打开手机输入法设置。'
         return True
     def open_logs(self):
         path=DATA/'logs';path.mkdir(exist_ok=True);os.startfile(str(path));return True

@@ -1,32 +1,30 @@
-# 推推投屏 · 现代版（WebView2 测试版）
+# 推推投屏 · 现代版
 
-这是使用 Windows WebView2、HTML/CSS 和 Python 的本地桌面界面，不使用 Qt，不会部署网站。它复用个人版的 USB 设备管理、定制 scrcpy、推推2图片桥接和分块文件队列。旧版程序不会被替换；配置沿用 `%APPDATA%\TuiTuiPersonal`，设备备注和设置两版共用。
+USB 安卓投屏桌面软件。每台设备独立启动/关闭投屏，列表和投屏窗口只显示备注名；图片 Ctrl+V 使用推推2输入法桥接。界面为 WebView2，本地渲染，不是网站。
 
-## 启动
+## 使用已打包软件
 
-本机已安装依赖，双击 `启动推推现代版.bat`。使用时请先退出旧推推投屏和旧个人版及其投屏窗口，避免多个桥接器同时监听快捷键。
+解压完整 `TuiTuiScreenV2` 文件夹，双击 `TuiTuiScreenV2.exe`，不要只复制 EXE。电脑需要 64 位 Windows、Edge WebView2 Runtime 和手机 USB 驱动。开启手机 USB 调试并确认授权。旧版推推投屏不要同时运行，避免多个程序同时监听快捷键。
 
-其他 Windows 电脑需要 Python 3.12、Microsoft Edge WebView2 Runtime、原推推投屏的定制引擎及推推2桥接器：
+高级设置中可为所选手机安装 `assets/tuitui2.apk` 并打开手机输入法设置；必须在手机上启用并选择“推推2”。投屏窗口 Ctrl+V 的图片会交给支持输入法图片接口的聊天应用，是否显示预览取决于应用，程序不会自动发送消息。中文输入通过定制 scrcpy 的手机文字剪贴板上屏，会更新手机剪贴板。
+
+配置和设备备注保存在 `%APPDATA%\TuiTuiPersonal`，软件包不包含个人配置。文件传输完成后会覆盖目标同名文件。逐项暂停/取消在当前 2 MiB 分块后生效，不支持应用重启后的断点续传。
+
+## 源码和重新构建
+
+- `tuitui_web/`、`tuitui_personal/` 是重建的 Windows 前端、设备管理、快捷键及文件传输源码。
+- `tuitui-engine/` 是本软件需要的原定制投屏引擎和对应许可证；它是二进制，不是该定制版本的完整源码。原定制 scrcpy 源码及原 Windows 桌面桥接器源码尚未找回，不能仅凭本仓库完整重新编译它们。
+- `assets/tuitui2.apk` 是推推2测试安装包，`assets/tuitui2-scanner.jar` 是适配后的图片桥接二进制。仓库另有 `recovered-source/` 中的输入法/桥接反编译参考代码、`warmime-rebuild/` 与 `.github/workflows/` 中的重打包脚本；反编译代码不等于完整原始源码。
+- APK 目前使用测试签名。当前 APK 可供分发，但后续重新构建产生不同签名时，不能保证覆盖更新；正式发布前应建立并安全保管稳定的签名密钥，不要提交密钥到仓库。
+
+Windows 安装 Python 3.12 和 Microsoft Edge WebView2 Runtime。执行：
 
 ```bat
 py -3.12 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements-webview.txt
+.venv\Scripts\python -m pip install pyinstaller==6.22.3
+powershell -NoProfile -ExecutionPolicy Bypass -File build-portable.ps1
 ```
 
-把原推推投屏 `engine` 文件夹完整复制到此项目根目录并命名为 `tuitui-engine`，保留 `assets/tuitui2-scanner.jar`。不能用官方 scrcpy 替代该引擎：中文输入用到定制的 `--text-via-clipboard`。引擎和原桥接器的完整源码尚未恢复。
+本版已进行打包启动和基本设备读取检查，多设备监控和按设备操作已通过代码测试；多个真实手机、不同聊天应用及全部传输场景仍需要使用者测试。
 
-## 使用
-
-- 列表不显示设备序列号。选择 USB 设备后可修改显示名称；启动投屏和修改名称会同步投屏窗口标题。
-- 默认使用已保存的精简模式；点击“高级设置”或关闭精简模式，可以设置画质、保持唤醒、自动息屏、窗口位置、自动重连、文字和图片功能。投屏参数在下次启动投屏时生效。
-- 自动重连只针对本程序启动且没有手动停止的投屏。停止按钮不会自动重开；意外断线后会等待设备出现并退避重试。
-- 文件可以通过选择器或拖放到高级面板；每项可暂停、继续或取消。暂停/取消在当前 2 MiB 分块结束后生效。任务完成后同名文件可能被覆盖；断线时手机可能留下临时文件，不支持跨重启续传。
-- 手机选择推推2输入法，在本程序启动的投屏窗口按 Ctrl+V 可以提交剪贴板图片到支持图片输入的聊天应用，不自动发送。Windows 中文/韩文输入使用定制引擎的手机文字剪贴板方式，可能更新手机剪贴板。
-
-## 当前验证状态
-
-本轮仅验证现代界面能启动、页面加载、USB 设备读取和快捷键监听建立；投屏、文字、图片、自动重连、文件拖放与高 DPI 的现代版端到端流程尚待手动测试。分块传输队列复用上一版通过真机检查的实现；代码测试覆盖逐项暂停/继续、取消保留同名文件和设置校验。
-
-## 源码
-
-`tuitui_web_main.py` 是启动入口，`tuitui_web/controller.py` 连接本地界面和后端，`tuitui_web/assets/` 是 HTML/CSS/JavaScript。`tuitui_personal/` 提供复用的设备、投屏、快捷键和传输模块。新界面不等于原桌面源码已恢复。

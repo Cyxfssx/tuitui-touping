@@ -48,7 +48,7 @@ class Backend:
     def start(self,serial,settings):
         if serial in self.processes and self.processes[serial].poll() is None:return
         name=settings.get('notes',{}).get(serial,'').strip() or '手机'
-        args=[str(SCRCPY),'-s',serial,'--window-title=推推投屏 · '+name,'--max-size='+str(settings['size']),'--max-fps='+str(settings['fps']),'--video-bit-rate='+str(settings['bitrate'])+'M','--keyboard=sdk','--no-clipboard-images']
+        args=[str(SCRCPY),'-s',serial,'--window-title='+name,'--max-size='+str(settings['size']),'--max-fps='+str(settings['fps']),'--video-bit-rate='+str(settings['bitrate'])+'M','--keyboard=sdk','--no-clipboard-images']
         if settings.get('text'):args.append('--text-via-clipboard')
         if not settings.get('clipboard'):args.append('--no-clipboard-autosync')
         if not settings.get('audio'):args.append('--no-audio')
@@ -59,7 +59,7 @@ class Backend:
         if geo and len(geo)==4:args.extend(['--window-x='+str(geo[0]),'--window-y='+str(geo[1]),'--window-width='+str(geo[2]),'--window-height='+str(geo[3])])
         try:
             p=subprocess.Popen(args,cwd=str(ENGINE),stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace',creationflags=CREATE_NO_WINDOW);self.processes[serial]=p
-            self.emit('mirror_started',serial,p.pid); self.executor.submit(self._monitor,serial,p)
+            self.emit('mirror_started',serial,p.pid); threading.Thread(target=self._monitor,args=(serial,p),name='mirror-monitor',daemon=True).start()
         except Exception as e:self.emit('error','投屏启动失败：'+str(e))
     def _monitor(self,serial,p):
         for line in p.stdout:
