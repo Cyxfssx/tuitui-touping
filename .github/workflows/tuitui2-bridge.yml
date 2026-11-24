@@ -18,17 +18,24 @@ jobs:
         run: |
           curl -fL --retry 3 -o apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar
           unzip -q original-scanner.jar classes.dex
-          java -cp apktool.jar org.jf.baksmali.Main disassemble classes.dex -o smali
+          mkdir shellapk
+          cd shellapk
+          unzip -q ../../warmime-rebuild/original.apk
+          cp ../classes.dex classes.dex
+          zip -qr ../bridge-shell.apk .
+          cd ..
+          java -jar apktool.jar d bridge-shell.apk -o decoded
           python - <<'PY'
           from pathlib import Path
-          p=Path('smali/com/genymobile/scrcpy/WarmImeBridge.smali')
+          p=Path('decoded/smali/com/genymobile/scrcpy/WarmImeBridge.smali')
           s=p.read_text()
           old='content://com.cyxfssx.warmime.images'
           new='content://com.chatmirror.warmclone2.images'
           assert s.count(old)==1, 'Unexpected bridge format'
           p.write_text(s.replace(old,new))
           PY
-          java -cp apktool.jar org.jf.smali.Main assemble smali -o classes.dex
+          java -jar apktool.jar b decoded -o patched.apk
+          unzip -o -q patched.apk classes.dex
           zip -q tuitui2-scanner.jar classes.dex
       - uses: actions/upload-artifact@v4
         with:
