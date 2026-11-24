@@ -25,3 +25,7 @@ Windows + Python 3.12：`python -m venv .venv`，`.venv\Scripts\python -m pip in
 ## 定制投屏引擎
 
 桌面端使用随原推推投屏分发的定制 scrcpy，引擎位于原安装包的 `engine` 文件夹。将该文件夹完整复制到本项目并改名为 `tuitui-engine`。这套引擎提供 `--text-via-clipboard` 和 `--no-clipboard-images`；仓库未恢复其对应的 C/SDL 源码，因此不能将它描述为已完整重建的开源部分。Qt 自己的图片快捷键源码在 `chatmirror/hotkeys.py`，图片通道在 `chatmirror/image_bridge.py`。
+
+## 本次验证（2026-11-24）
+
+在 SM-A376B 上启动定制 scrcpy（SDK 键盘模式），并在该投屏窗口按 Ctrl+V，Qt 快捷键捕获测试图片并向推推2提交，目标聊天应用返回 accepted；该测试没有发送聊天消息。中文和韩文 Windows 输入法的选词与上屏尚需手动真机复测。调试辅助窗口测试结束后恢复了测试前的电脑剪贴板。
