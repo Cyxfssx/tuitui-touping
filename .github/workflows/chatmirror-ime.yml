@@ -13,7 +13,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
@@ -25,3 +24,4 @@ jobs:
           name: chatmirror-ime-debug
           path: chatmirror-project/android-ime/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
