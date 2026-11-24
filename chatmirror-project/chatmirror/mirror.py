@@ -6,6 +6,8 @@ class MirrorManager(QObject):
     def start(self, serial, settings):
         if serial in self.processes: return
         args = ['-s',serial, '--window-title=ChatMirror - '+serial, '--max-size='+str(settings.get('size',1280)), '--video-bit-rate='+str(settings.get('bitrate',8))+'M', '--max-fps='+str(settings.get('fps',30)), '--video-codec='+settings.get('codec','h264'), '--keyboard='+settings.get('keyboard','sdk'), '--window-width='+str(settings.get('width',420)), '--window-height='+str(settings.get('height',800))]
+        if settings.get('keyboard','sdk') == 'sdk': args.append('--text-via-clipboard')
+        args.append('--no-clipboard-images')
         for key,flag in [('audio','--no-audio'),('clipboard','--no-clipboard-autosync')]:
             if not settings.get(key, True): args.append(flag)
         for key,flag in [('screenoff','--turn-screen-off'),('awake','--stay-awake'),('top','--always-on-top')]:

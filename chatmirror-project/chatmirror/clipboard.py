@@ -3,7 +3,7 @@ from pathlib import Path
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QUrl
 from .config import DATA
-IMAGE_EXTS={'.png','.jpg','.jpeg','.webp','.bmp'}
+IMAGE_EXTS={'.png','.jpg','.jpeg','.webp','.bmp','.gif'}
 def clipboard_image():
     mime=QApplication.clipboard().mimeData()
     if mime.hasUrls():

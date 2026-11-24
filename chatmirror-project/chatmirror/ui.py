@@ -10,13 +10,14 @@ from .transfer import Transfers
 from .window import window_geometry
 from .text_bridge import TextBridge, APK
 from .image_bridge import ImageJob, IME
+from .hotkeys import ImagePasteHook
 from .config import ROOT
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__(); self.cfg=Config(); self.mirror=MirrorManager(); self.transfer=Transfers(); self.bridge=TextBridge(); self.bridge.completed.connect(self.text_result); self.image_job=None; self.queue=[]; self.last_remote=''; self.serial=''; self.rows=[]
         self.setWindowTitle('推推投屏 Qt · 测试版'); self.resize(1300,800); self.setAcceptDrops(True)
-        self.mirror.changed.connect(self.notice); self.transfer.status.connect(self.notice); self.transfer.finished.connect(self.transfer_done)
+        self.mirror.changed.connect(self.notice); self.paste_hook=ImagePasteHook(self.mirror.processes,self); self.paste_hook.paste_requested.connect(self.window_paste_image); self.paste_hook.start(); self.transfer.status.connect(self.notice); self.transfer.finished.connect(self.transfer_done)
         root=QWidget(); self.setCentralWidget(root); outer=QVBoxLayout(root); outer.setContentsMargins(0,0,0,0); outer.setSpacing(0)
         bar=QLabel('  ◈  推推投屏 Qt     /     安卓设备工作台'); bar.setObjectName('header'); outer.addWidget(bar)
         body=QHBoxLayout(); body.setContentsMargins(16,16,16,12); body.setSpacing(14); outer.addLayout(body,1)
@@ -45,11 +46,11 @@ class MainWindow(QMainWindow):
         v=self.page('聊天应用','输入已安装应用的 Android 包名，通过系统启动入口打开。')
         self.package=QLineEdit(); self.package.setPlaceholderText('例如 com.tencent.mm'); self.package.setText(self.cfg.get('package','com.tencent.mm')); v.addWidget(self.package); v.addWidget(self.btn('启动应用',self.launch_app)); v.addStretch()
     def build_text(self):
-        v=self.page('文字输入','请在手机上选择推推2输入法，在投屏窗口点击聊天输入框。普通键盘由 scrcpy 处理；中文和韩文可通过剪贴板辅助粘贴。')
+        v=self.page('文字输入','在手机选择推推2输入法并点击聊天输入框。在投屏窗口使用 Windows 输入法，选词上屏后由投屏引擎通过手机剪贴板写入。使用 SDK 键盘模式。')
         row=QHBoxLayout(); row.addWidget(self.btn('安装推推2输入法',self.install_ime)); row.addWidget(self.btn('打开手机输入法设置',self.ime_settings)); v.addLayout(row)
         self.text=QTextEdit(); self.text.setPlaceholderText('在此使用电脑输入法输入文字…'); v.addWidget(self.text,1)
         v.addWidget(self.btn('复制文字到电脑剪贴板',lambda: (clipboard.copy_text(self.text.toPlainText()),self.notice('文字已复制；请切回投屏窗口粘贴'))))
-        lab=QLabel('在投屏窗口使用 Ctrl+V；如果不生效，尝试左 Alt+V。是否支持粘贴取决于设备及目标应用。'); lab.setWordWrap(True); lab.setObjectName('muted'); v.addWidget(lab)
+        lab=QLabel('Windows 输入法直接上屏需要 SDK 键盘模式。输入时手机剪贴板会被更新；目标应用或手机限制可能影响粘贴。'); lab.setWordWrap(True); lab.setObjectName('muted'); v.addWidget(lab)
     def install_ime(self):
         if not self.require(): return
         apk=ROOT/'assets'/'tuitui2.apk'
@@ -66,7 +67,10 @@ class MainWindow(QMainWindow):
         v.addWidget(self.btn('将剪贴板图片交给当前聊天',self.commit_clipboard_image))
         v.addWidget(self.btn('选择图片交给当前聊天',self.commit_image_file))
         v.addWidget(self.btn('上传图片到手机文件夹',self.choose_images))
-        note=QLabel('图片提交依赖聊天应用支持 Android 图片输入；如果不支持，可上传后在聊天中手动选择。此按钮并非投屏窗口的 Ctrl+V 自动拦截。');note.setWordWrap(True);note.setObjectName('muted');v.addWidget(note);v.addStretch()
+        note=QLabel('在本程序启动的投屏窗口按 Ctrl+V 可以提交剪贴板图片；文字 Ctrl+V 保持正常操作。聊天应用需要支持图片输入。');note.setWordWrap(True);note.setObjectName('muted');v.addWidget(note);v.addStretch()
+    def window_paste_image(self,serial):
+        try: self.start_image_job(clipboard.clipboard_image(),serial)
+        except Exception as e: QMessageBox.warning(self,'图片不可用',str(e))
     def commit_clipboard_image(self):
         if not self.require(): return
         try: self.start_image_job(clipboard.clipboard_image())
@@ -75,9 +79,9 @@ class MainWindow(QMainWindow):
         if not self.require(): return
         filename,_=QFileDialog.getOpenFileName(self,'选择图片',filter='图片 (*.png *.jpg *.jpeg *.webp *.bmp *.gif)')
         if filename: self.start_image_job(filename)
-    def start_image_job(self,path):
+    def start_image_job(self,path,serial=None):
         if self.image_job and self.image_job.isRunning(): QMessageBox.information(self,'请稍候','图片正在处理。');return
-        self.image_job=ImageJob(self.serial,path,self)
+        self.image_job=ImageJob(serial or self.serial,path,self)
         self.image_job.result.connect(self.image_result); self.image_job.start();self.notice('正在提交图片…')
     def image_result(self,ok,message):
         self.notice(message)
@@ -212,7 +216,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self,e):
         if self.image_job and self.image_job.isRunning():
             QMessageBox.information(self,'请稍候','图片传输完成后再关闭程序。'); e.ignore(); return
-        self.queue.clear(); self.transfer.cancel()
+        self.paste_hook.stop(); self.queue.clear(); self.transfer.cancel()
         for serial in list(self.mirror.processes): self.remember(serial); self.mirror.stop(serial)
         e.accept()
 

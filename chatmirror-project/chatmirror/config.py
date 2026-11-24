@@ -1,7 +1,7 @@
 import json, os, sys
 from pathlib import Path
 ROOT = Path(sys.executable).resolve().parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent.parent
-ENGINE = ROOT / 'scrcpy-win64-v5.0.1'
+ENGINE = ROOT / 'tuitui-engine'
 ADB = str(ENGINE / 'adb.exe')
 SCRCPY = str(ENGINE / 'scrcpy.exe')
 DATA = Path(os.getenv('APPDATA', str(ROOT))) / 'ChatMirror'
