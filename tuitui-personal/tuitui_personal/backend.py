@@ -2,6 +2,7 @@
 import json, os, queue, re, secrets, subprocess, sys, threading
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+from .transfers import TransferQueue
 
 ROOT=Path(sys.executable).resolve().parent if getattr(sys,'frozen',False) else Path(__file__).resolve().parent.parent
 ENGINE=ROOT/'tuitui-engine'
@@ -20,7 +21,7 @@ def run(*args,timeout=15):
 def quote(value): return "'"+value.replace("'", "'\\''")+"'"
 
 class Config:
-    defaults={'size':1920,'fps':30,'bitrate':4,'audio':False,'top':False,'text':True,'clipboard':True,'images':True,'directory':'/sdcard/Download/推推投屏','notes':{}}
+    defaults={'size':1920,'fps':30,'bitrate':4,'audio':False,'top':False,'text':True,'clipboard':True,'images':True,'directory':'/sdcard/Download/推推投屏','notes':{},'stay_awake':False,'screen_off':False,'remember_window':True,'auto_reconnect':True,'simple_mode':True,'geometry':{}}
     def __init__(self):
         self.path=DATA/'settings.json';self.value=self.defaults.copy();self.value['notes']={}
         try:
@@ -31,7 +32,7 @@ class Config:
 
 class Backend:
     def __init__(self):
-        self.events=queue.Queue(); self.executor=ThreadPoolExecutor(max_workers=3,thread_name_prefix='tuitui');self.processes={};self.lock=threading.Lock();self.file_process=None;self.cancelled=False;self.image_busy=False
+        self.events=queue.Queue(); self.executor=ThreadPoolExecutor(max_workers=3,thread_name_prefix='tuitui');self.processes={};self.lock=threading.Lock();self.image_busy=False;self.transfers=TransferQueue(run,quote,self.emit)
     def emit(self,name,*args):self.events.put((name,args))
     def devices(self):
         try:
@@ -51,6 +52,10 @@ class Backend:
         if not settings.get('clipboard'):args.append('--no-clipboard-autosync')
         if not settings.get('audio'):args.append('--no-audio')
         if settings.get('top'):args.append('--always-on-top')
+        if settings.get('stay_awake'):args.append('--stay-awake')
+        if settings.get('screen_off'):args.append('--turn-screen-off')
+        geo=settings.get('geometry',{}).get(serial) if settings.get('remember_window') else None
+        if geo and len(geo)==4:args.extend(['--window-x='+str(geo[0]),'--window-y='+str(geo[1]),'--window-width='+str(geo[2]),'--window-height='+str(geo[3])])
         try:
             p=subprocess.Popen(args,cwd=str(ENGINE),stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace',creationflags=CREATE_NO_WINDOW);self.processes[serial]=p
             self.emit('mirror_started',serial,p.pid); self.executor.submit(self._monitor,serial,p)
@@ -66,28 +71,7 @@ class Backend:
         p=self.processes.get(serial)
         if p and p.poll() is None:p.terminate()
     def file_batch(self,serial,paths,directory):
-        if self.file_process is not None:self.emit('error','已有传输任务正在进行。');return
-        self.file_process='queued';self.cancelled=False;self.executor.submit(self._file_batch,serial,paths,directory)
-    def _file_batch(self,serial,paths,directory):
-        try:
-            if directory!='/sdcard' and not directory.startswith('/sdcard/'):raise ValueError('保存路径必须位于 /sdcard 下。')
-            run('-s',serial,'shell','mkdir -p '+quote(directory))
-            for filename in paths:
-                if self.cancelled:break
-                pth=Path(filename)
-                if not pth.is_file():self.emit('file',filename,'失败：不是文件');continue
-                self.emit('file',filename,'正在传输')
-                p=subprocess.Popen([str(ADB),'-s',serial,'push','-p',str(pth),directory.rstrip('/')+'/'+pth.name],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,encoding='utf-8',errors='replace',creationflags=CREATE_NO_WINDOW)
-                self.file_process=p; output=[]
-                for line in p.stdout:
-                    output.append(line.strip());match=re.search(r'(\d{1,3})%',line)
-                    if match:self.emit('file',filename,'传输中 '+match.group(1)+'%')
-                code=p.wait();self.emit('file',filename,'已取消' if self.cancelled else '已完成' if code==0 else '失败：'+(' '.join(output)[-160:] or f'ADB 错误 {code}'))
-        except Exception as e:self.emit('error','文件传输失败：'+str(e))
-        finally:self.file_process=None;self.emit('file_done')
-    def cancel(self):
-        self.cancelled=True;p=self.file_process
-        if p and p!='queued' and p.poll() is None:p.terminate()
+        return self.transfers.add(serial,paths,directory)
     def submit_image(self,serial,path,temporary=False):
         with self.lock:
             if self.image_busy:self.emit('image',False,'图片正在传输，请稍候。');return
@@ -116,6 +100,6 @@ class Backend:
                 except OSError:pass
             with self.lock:self.image_busy=False
     def close(self):
-        self.cancel()
+        self.transfers.close()
         for serial in list(self.processes):self.stop(serial)
         self.executor.shutdown(wait=False,cancel_futures=True)
