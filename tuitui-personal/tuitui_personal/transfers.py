@@ -22,7 +22,7 @@ class TransferQueue:
         self.run=run;self.quote=quote;self.emit=emit;self.tasks={};self.pending=queue.Queue();self.closed=False
         self.worker=threading.Thread(target=self._loop,name='transfer-queue',daemon=True);self.worker.start()
     def add(self,serial,paths,directory):
-        if directory!='/sdcard' and not directory.startswith('/sdcard/'):raise ValueError('保存路径必须位于 /sdcard 下。')
+        if (directory!='/sdcard' and not directory.startswith('/sdcard/')) or any(p in ('.','..') for p in directory.split('/')) or '\x00' in directory:raise ValueError('保存路径必须位于 /sdcard 下。')
         result=[]
         for path in paths:
             if len(self.tasks)>=128:break

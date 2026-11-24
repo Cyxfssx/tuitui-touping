@@ -1,0 +1,2 @@
+Pillow==13.0.0
+pywebview==6.2.1

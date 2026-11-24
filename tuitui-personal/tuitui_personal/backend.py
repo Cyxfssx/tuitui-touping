@@ -75,7 +75,11 @@ class Backend:
         return self.transfers.add(serial,paths,directory)
     def submit_image(self,serial,path,temporary=False):
         with self.lock:
-            if self.image_busy:self.emit('image',False,'图片正在传输，请稍候。');return
+            if self.image_busy:
+                if temporary:
+                    try:Path(path).unlink(missing_ok=True)
+                    except OSError:pass
+                self.emit('image',False,'图片正在传输，请稍候。');return
             self.image_busy=True
         self.executor.submit(self._image,serial,Path(path),temporary)
     def _image(self,serial,path,temporary):

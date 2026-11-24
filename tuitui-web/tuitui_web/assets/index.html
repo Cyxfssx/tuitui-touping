@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>推推投屏</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="shell" id="shell">
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark"><svg viewBox="0 0 24 24" fill="none"><rect x="6" y="2.5" width="12" height="19" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M10 18.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><div><div class="brand-name">推推投屏</div><div class="brand-sub">TUITUI SCREEN <span> / </span> PERSONAL</div></div></div>
+    <div class="header-actions"><button class="btn ghost" id="advancedBtn">高级设置 <span>↗</span></button><label class="mode"><input type="checkbox" id="simpleMode"><span class="check"></span><span>精简模式</span></label></div>
+  </header>
+  <div class="layout" id="layout">
+    <main class="panel device-panel">
+      <div class="eyebrow"><span class="eyebrow-dot"></span> DEVICE WORKSPACE</div>
+      <div class="panel-heading"><div><h1>你的设备</h1><p>通过 USB 连接，专注当前手机</p></div><button class="icon-btn" id="refreshBtn" title="刷新设备" aria-label="刷新设备"><svg viewBox="0 0 24 24" fill="none"><path d="M20 7v5h-5M4 17v-5h5M5 9a7.5 7.5 0 0 1 12.8-2.8L20 12M4 12l2.2 5.8A7.5 7.5 0 0 0 19 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+      <div class="section-label"><span>USB 设备</span><span class="device-count" id="count">检测中</span></div>
+      <div class="devices" id="devices"><div class="empty">正在检测设备…</div></div>
+      <div class="selected-card"><div class="selected-top"><span class="caption">当前设备</span><span class="connection" id="connection"><span class="connection-dot"></span><span id="connectionText">未连接</span></span></div><div class="device-title" id="selectedName">尚未选择设备</div><div class="device-model" id="selectedModel">连接手机并允许 USB 调试</div><button class="btn primary action" id="connectBtn" disabled><span id="connectIcon">▶</span><span id="connectText">一键 USB 连接</span></button></div>
+      <div class="rename-section"><label class="input-label" for="rename">设备名称</label><div class="rename-row"><input id="rename" maxlength="64" placeholder="输入设备名称" autocomplete="off"><button class="btn secondary" id="renameBtn">保存名称</button></div><p class="hint">名称仅用于显示，手机序列号不会显示在界面中。</p></div>
+      <div class="compact-tip"><span>✦</span><span>你的设备，随时准备就绪。</span></div>
+    </main>
+    <section class="advanced-panel" id="advancedPanel" hidden>
+      <div class="advanced-heading"><div><div class="eyebrow">YOUR WORKSPACE</div><h2>高级设置</h2><p>按自己的习惯调整画面与传输方式</p></div><button class="btn ghost" id="backSimple">返回精简</button></div>
+      <div class="settings-card panel">
+        <div class="card-head"><div><h3>画面与功能</h3><p>投屏启动时应用当前配置</p></div><span class="tag">USB · SDK</span></div>
+        <div class="settings-grid"><label>最大分辨率<select id="size"><option value="720">720</option><option value="1280">1280</option><option value="1920">1920</option><option value="2560">2560</option></select></label><label>最大帧率<select id="fps"><option value="15">15 FPS</option><option value="24">24 FPS</option><option value="30">30 FPS</option><option value="60">60 FPS</option></select></label><label>视频码率<select id="bitrate"><option value="2">2 Mbps</option><option value="3">3 Mbps</option><option value="4">4 Mbps</option><option value="6">6 Mbps</option><option value="8">8 Mbps</option><option value="12">12 Mbps</option><option value="16">16 Mbps</option></select></label></div>
+        <div class="switch-grid">
+          <label class="toggle"><input type="checkbox" data-flag="stay_awake"><span class="switch"></span><span>保持唤醒</span></label>
+          <label class="toggle"><input type="checkbox" data-flag="screen_off"><span class="switch"></span><span>自动息屏</span></label>
+          <label class="toggle"><input type="checkbox" data-flag="remember_window"><span class="switch"></span><span>记住窗口位置</span></label>
+          <label class="toggle"><input type="checkbox" data-flag="auto_reconnect"><span class="switch"></span><span>自动重连</span></label>
+          <label class="toggle"><input type="checkbox" data-flag="text"><span class="switch"></span><span>中文输入</span></label>
+          <label class="toggle"><input type="checkbox" data-flag="clipboard"><span class="switch"></span><span>文字剪贴板</span></label>
+          <label class="toggle"><input type="checkbox" data-flag="images"><span class="switch"></span><span>图片 Ctrl+V</span></label>
+          <label class="toggle"><input type="checkbox" data-flag="audio"><span class="switch"></span><span>音频</span></label>
+          <label class="toggle"><input type="checkbox" data-flag="top"><span class="switch"></span><span>窗口置顶</span></label>
+        </div>
+        <div class="settings-note">自动息屏在投屏启动时关闭手机屏幕；画面选项修改后需重新启动投屏。</div>
+        <div class="quick-actions"><button class="btn secondary" id="showBtn">查看投屏</button><button class="btn secondary" id="reconnectBtn">重新连接</button><button class="btn ghost" id="logsBtn">打开日志</button></div>
+      </div>
+      <div class="transfer-card panel">
+        <div class="card-head"><div><h3>文件快传</h3><p>发送到当前选择的 USB 设备</p></div><button class="btn secondary small" id="chooseBtn">选择文件</button></div>
+        <div class="dropzone" id="dropzone" tabindex="0"><div class="upload-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 15V3m0 0L8 7m4-4 4 4M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><strong>拖拽文件到这里</strong><span>或点击选择文件，直接发送到手机</span></div>
+        <label class="path-label">保存至手机<input id="directory" spellcheck="false" placeholder="/sdcard/Download/推推投屏"></label>
+        <div class="list-head"><span>传输列表</span><button class="text-btn" id="clearBtn">清理已结束</button></div><div class="tasks" id="tasks"><div class="empty small-empty">暂无传输任务</div></div>
+      </div>
+    </section>
+  </div>
+  <footer class="footer"><div class="footer-indicator"></div><span id="status">正在检测 USB 设备…</span><span class="footer-end">USB ONLY</span></footer>
+</div>
+<script src="app.js"></script>
+</body></html>
