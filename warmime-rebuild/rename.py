@@ -2,9 +2,10 @@ import pathlib, re
 root = pathlib.Path('decoded')
 manifest = root / 'AndroidManifest.xml'
 s = manifest.read_text(encoding='utf-8')
-s = s.replace('package="com.cyxfssx.warmime"', 'package="com.chatmirror.warmclone"')
-s = s.replace('com.cyxfssx.warmime.images', 'com.chatmirror.warmclone.images')
-s = s.replace('com.cyxfssx.warmime.picker', 'com.chatmirror.warmclone.picker')
+s = re.sub(r'(android:name=")\.([A-Za-z_][\w.$]*)(")', r'\1com.cyxfssx.warmime.\2\3', s)
+s = s.replace('package="com.cyxfssx.warmime"', 'package="com.chatmirror.warmclone2"')
+s = s.replace('com.cyxfssx.warmime.images', 'com.chatmirror.warmclone2.images')
+s = s.replace('com.cyxfssx.warmime.picker', 'com.chatmirror.warmclone2.picker')
 manifest.write_text(s, encoding='utf-8')
 strings = root / 'res/values/strings.xml'
 s = strings.read_text(encoding='utf-8')
@@ -15,7 +16,7 @@ count = 0
 for path in root.glob('smali*/**/*.smali'):
     text = path.read_text(encoding='utf-8')
     if 'com.cyxfssx.warmime.images' in text:
-        text = text.replace('com.cyxfssx.warmime.images', 'com.chatmirror.warmclone.images')
+        text = text.replace('com.cyxfssx.warmime.images', 'com.chatmirror.warmclone2.images')
         path.write_text(text, encoding='utf-8')
         count += 1
 if not count: raise RuntimeError('Image provider authority not found in code')
