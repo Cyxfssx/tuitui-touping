@@ -1,0 +1,36 @@
+name: Build Tuitui 2 image bridge
+on:
+  workflow_dispatch:
+  push:
+    branches: [chatmirror-cloud-build]
+    paths: ['bridge-rebuild/**', '.github/workflows/tuitui2-bridge.yml']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Patch bridge
+        working-directory: bridge-rebuild
+        run: |
+          curl -fL --retry 3 -o apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar
+          unzip -q original-scanner.jar classes.dex
+          java -cp apktool.jar org.jf.baksmali.Main disassemble classes.dex -o smali
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('smali/com/genymobile/scrcpy/WarmImeBridge.smali')
+          s=p.read_text()
+          old='content://com.cyxfssx.warmime.images'
+          new='content://com.chatmirror.warmclone2.images'
+          assert s.count(old)==1, 'Unexpected bridge format'
+          p.write_text(s.replace(old,new))
+          PY
+          java -cp apktool.jar org.jf.smali.Main assemble smali -o classes.dex
+          zip -q tuitui2-scanner.jar classes.dex
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tuitui2-scanner
+          path: bridge-rebuild/tuitui2-scanner.jar
