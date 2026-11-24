@@ -21,7 +21,7 @@ public final class BridgeIme extends InputMethodService {
             String encoded = intent.getStringExtra("text64");
             if (encoded == null || encoded.length() > 131072) { setResultCode(2); setResultData("invalid payload"); return; }
             InputConnection connection = getCurrentInputConnection();
-            if (connection == null || !isInputStarted()) { setResultCode(3); setResultData("no focused editor"); return; }
+            if (connection == null || getCurrentInputEditorInfo() == null) { setResultCode(3); setResultData("no focused editor"); return; }
             try {
                 String text = new String(Base64.decode(encoded, Base64.NO_WRAP), StandardCharsets.UTF_8);
                 boolean ok = connection.commitText(text, 1);
@@ -43,3 +43,4 @@ public final class BridgeIme extends InputMethodService {
         return view;
     }
 }
+
