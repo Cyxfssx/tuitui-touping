@@ -11,6 +11,7 @@ u.GetWindowRect.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.RECT)];u.GetWind
 u.GetWindowTextLengthW.argtypes=[wintypes.HWND];u.GetWindowTextLengthW.restype=ctypes.c_int
 u.GetWindowTextW.argtypes=[wintypes.HWND,wintypes.LPWSTR,ctypes.c_int]
 u.ShowWindow.argtypes=[wintypes.HWND,ctypes.c_int];u.SetForegroundWindow.argtypes=[wintypes.HWND]
+u.SetWindowTextW.argtypes=[wintypes.HWND,wintypes.LPCWSTR];u.SetWindowTextW.restype=wintypes.BOOL
 
 def window_for_pid(pid):
     found=[]
@@ -33,3 +34,8 @@ def show(pid):
     hwnd=window_for_pid(pid)
     if not hwnd:return False
     u.ShowWindow(hwnd,9);return bool(u.SetForegroundWindow(hwnd))
+
+
+def set_title(pid,title):
+    hwnd=window_for_pid(pid)
+    return bool(hwnd and u.SetWindowTextW(hwnd,title))

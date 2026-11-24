@@ -5,7 +5,7 @@ from tkinter import ttk,filedialog,messagebox,simpledialog
 from tkinterdnd2 import DND_FILES,TkinterDnD
 from .backend import Backend,Config,DATA,ROOT
 from .hotkeys import Hook,capture
-from .windows import bounds,show
+from .windows import bounds,show,set_title
 
 BG='#0F172A';CARD='#1E293B';BORDER='#334155';TEXT='#E2E8F0';MUTED='#94A3B8';BLUE='#2563EB';BTN='#334155';RED='#B43C46'
 FONT=('Microsoft YaHei UI',10);SMALL=('Microsoft YaHei UI',9);TITLE=('Microsoft YaHei UI',15,'bold')
@@ -90,7 +90,10 @@ class App:
         if not self.serial:messagebox.showwarning('未选择设备','请先选择设备。',parent=self.root);return
         name=self.name_var.get().strip()
         if not name:messagebox.showwarning('名称为空','请输入设备名称。',parent=self.root);return
-        self.cfg.value.setdefault('notes',{})[self.serial]=name;self.cfg.save();self.populate_devices();self.set_status('设备名称已更新。')
+        self.cfg.value.setdefault('notes',{})[self.serial]=name;self.cfg.save();self.populate_devices()
+        p=self.backend.processes.get(self.serial)
+        if p and p.poll() is None and not set_title(p.pid,'推推投屏 · '+name):self.set_status('设备名称已保存；投屏窗口启动后会使用新名称。')
+        else:self.set_status('设备名称已更新，投屏窗口标题已同步。' if p and p.poll() is None else '设备名称已更新。')
     def populate_devices(self):
         self.list.delete(0,'end');notes=self.cfg.value.get('notes',{})
         for i,(serial,state,model) in enumerate(self.devices):self.list.insert('end',notes.get(serial) or f'手机 {i+1:02d} · {model}')

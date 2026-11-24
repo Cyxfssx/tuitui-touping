@@ -47,7 +47,8 @@ class Backend:
     def refresh(self):self.executor.submit(self.devices)
     def start(self,serial,settings):
         if serial in self.processes and self.processes[serial].poll() is None:return
-        args=[str(SCRCPY),'-s',serial,'--window-title=推推投屏 · '+serial,'--max-size='+str(settings['size']),'--max-fps='+str(settings['fps']),'--video-bit-rate='+str(settings['bitrate'])+'M','--keyboard=sdk','--no-clipboard-images']
+        name=settings.get('notes',{}).get(serial,'').strip() or '手机'
+        args=[str(SCRCPY),'-s',serial,'--window-title=推推投屏 · '+name,'--max-size='+str(settings['size']),'--max-fps='+str(settings['fps']),'--video-bit-rate='+str(settings['bitrate'])+'M','--keyboard=sdk','--no-clipboard-images']
         if settings.get('text'):args.append('--text-via-clipboard')
         if not settings.get('clipboard'):args.append('--no-clipboard-autosync')
         if not settings.get('audio'):args.append('--no-audio')
