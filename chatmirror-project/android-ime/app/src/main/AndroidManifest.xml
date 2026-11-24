@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:label="ChatMirror 输入法" android:allowBackup="false" android:usesCleartextTraffic="false">
+        <service android:name=".BridgeIme" android:permission="android.permission.BIND_INPUT_METHOD" android:exported="true" android:label="ChatMirror 输入法">
+            <intent-filter><action android:name="android.view.InputMethod" /></intent-filter>
+            <meta-data android:name="android.view.im" android:resource="@xml/method" />
+        </service>
+    </application>
+</manifest>
